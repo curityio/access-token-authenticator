@@ -40,8 +40,8 @@ import java.util.Optional
 sealed interface AccessTokenAuthenticatorRequestModel {
     object GetRequestModel : AccessTokenAuthenticatorRequestModel
     class PostRequestModel(
-        @get:NotEmpty("access token is mandatory")
-        val accessToken: String?,
+        @get:NotEmpty("token is mandatory")
+        val token: String?,
     ) : AccessTokenAuthenticatorRequestModel
 
     companion object {
@@ -111,7 +111,7 @@ class AccessTokenAuthenticatorRequestHandler(
             }
 
             val claims: JwtClaims = jwtBuilder.build()
-                .process(requestModel.accessToken)
+                .process(requestModel.token)
                 .jwtClaims
 
             validatePurpose(response, claims.getClaimValue("purpose"))
