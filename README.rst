@@ -11,6 +11,24 @@ A custom Authenticator plugin for the Curity Identity Server.
 
 This plugin allows users to authenticate using HAAPI by first obtaining an access token via other means.
 
+That allows a form of token exchange where the end user may be prompted to consent to upscoping, for example.
+
+The following configuration settings are available:
+
+* ``required-issuer`` - required token issuer.
+* ``required-audience`` - required token audience. Optional.
+* ``required-scopes`` - required token scopes. Optional.
+* ``required-purpose`` - required token ``purpose``. Default: ``access_token``. If set to a blank string, this will be ignored.
+* ``subject-claim-name`` - the name of the subject claim. Default: ``sub``.
+* ``key-verification/id`` - ID of an existing token signature verification key.
+
+.. image:: docs/images/access_token_config.png
+    :alt: Access Token Authenticator Configuration
+
+.. note::
+    This plugin should not be used by users to authenticate using a browser because it is a bad security practice to expose
+    access tokens directly to end users. Use `HAAPI`_ instead.
+
 Building the Plugin
 ~~~~~~~~~~~~~~~~~~~
 
@@ -36,3 +54,4 @@ Please visit `curity.io`_ for more information about the Curity Identity Server.
 .. _curity.io: https://curity.io/
 .. _the documentation: https://curity.io/docs/idsvr/latest/developer-guide/plugins/index.html#server-provided-dependencies-1
 .. _OpenID Connect authenticator: https://curity.io/docs/idsvr/latest/authentication-service-admin-guide/authenticators/oidc.html
+.. _HAAPI: https://curity.io/resources/haapi/
