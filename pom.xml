@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>io.curity.identityserver.plugin</groupId>
-    <artifactId>access-token-authenticator</artifactId>
+    <artifactId>identityserver.plugins.authenticators.access_token</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
 
