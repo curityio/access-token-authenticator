@@ -13,18 +13,50 @@ package io.curity.identityserver.plugin.authenticator.access_token.descriptor
 
 import io.curity.identityserver.plugin.authenticator.access_token.authenticate.AccessTokenAuthenticatorRequestHandler
 import io.curity.identityserver.plugin.authenticator.access_token.authenticate.HaapiAccessTokenRepresentationFunction
+import org.jose4j.jwt.ReservedClaimNames
 import se.curity.identityserver.sdk.authentication.AuthenticatorRequestHandler
 import se.curity.identityserver.sdk.config.Configuration
+import se.curity.identityserver.sdk.config.annotation.DefaultString
+import se.curity.identityserver.sdk.config.annotation.Description
+import se.curity.identityserver.sdk.config.annotation.SizeConstraint
 import se.curity.identityserver.sdk.haapi.RepresentationFunction
 import se.curity.identityserver.sdk.plugin.descriptor.AuthenticatorPluginDescriptor
 import se.curity.identityserver.sdk.service.crypto.AsymmetricSignatureVerificationCryptoStore
+import java.util.Optional
+
+object AccessTokenAuthenticatorConstants {
+    const val PLUGIN_TYPE = "access_token"
+    const val TEMPLATE_NAME = "authenticate/start"
+}
 
 /**
  * Plugin configuration object.
  */
 interface AccessTokenAuthenticatorConfig : Configuration {
-    val tokenIssuer: String
-    val tokenAudience: String
+    @get:Description("The expected token issuer")
+    @get:SizeConstraint(min = 2, max = 1024)
+    val requiredIssuer: String
+
+    @get:Description("The expected token audience")
+    val requiredAudience: Optional<@SizeConstraint(min = 2, max = 128) String>
+
+    @get:Description("The required scopes, if any.")
+    val requiredScopes: List<String>
+
+    @get:DefaultString("access_token")
+    @get:Description(
+        "The required value of the 'purpose' claim. " +
+                "If set to a blank String, it will not be validated. " +
+                "By default, the value 'access_token' is used."
+    )
+    val requiredPurpose: String
+
+    @get:Description("The name of the claim to extract the subject from. By default, 'sub' is used.")
+    @get:DefaultString(ReservedClaimNames.SUBJECT)
+    @get:SizeConstraint(min = 1, max = 64)
+    val subjectClaimName: String
+
+    @get:Description("The asymmetric key to use to verify the token signature.")
     val keyVerification: AsymmetricSignatureVerificationCryptoStore
 }
 
@@ -39,7 +71,7 @@ interface AccessTokenAuthenticatorConfig : Configuration {
  */
 class AccessTokenAuthenticatorPluginDescriptor : AuthenticatorPluginDescriptor<AccessTokenAuthenticatorConfig> {
 
-    override fun getPluginImplementationType(): String = "access_token"
+    override fun getPluginImplementationType(): String = AccessTokenAuthenticatorConstants.PLUGIN_TYPE
 
     override fun getConfigurationType(): Class<out AccessTokenAuthenticatorConfig> =
         AccessTokenAuthenticatorConfig::class.java
@@ -48,6 +80,8 @@ class AccessTokenAuthenticatorPluginDescriptor : AuthenticatorPluginDescriptor<A
         mapOf("index" to AccessTokenAuthenticatorRequestHandler::class.java)
 
     override fun getRepresentationFunctions(): Map<String, Class<out RepresentationFunction>> {
-        return mapOf("authenticate/start" to HaapiAccessTokenRepresentationFunction::class.java)
+        return mapOf(
+            AccessTokenAuthenticatorConstants.TEMPLATE_NAME to HaapiAccessTokenRepresentationFunction::class.java,
+        )
     }
 }

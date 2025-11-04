@@ -11,8 +11,12 @@
 
 package io.curity.identityserver.plugin.authenticator.access_token.authenticate
 
-import io.curity.identityserver.plugin.authenticator.access_token.descriptor.AccessTokenAuthenticatorConfig
-import se.curity.identityserver.sdk.haapi.*
+import se.curity.identityserver.sdk.haapi.ActionKind
+import se.curity.identityserver.sdk.haapi.FormActionConfigurator
+import se.curity.identityserver.sdk.haapi.Message
+import se.curity.identityserver.sdk.haapi.RepresentationFactory
+import se.curity.identityserver.sdk.haapi.RepresentationFunction
+import se.curity.identityserver.sdk.haapi.RepresentationModel
 import se.curity.identityserver.sdk.http.HttpMethod
 import se.curity.identityserver.sdk.http.MediaType
 import se.curity.identityserver.sdk.service.authentication.AuthenticatorInformationProvider
@@ -29,7 +33,6 @@ import java.util.function.Consumer
  * be authenticated.
  */
 class HaapiAccessTokenRepresentationFunction(
-    private val _config: AccessTokenAuthenticatorConfig,
     private val _helper: AuthenticatorInformationProvider,
 ) : RepresentationFunction {
     override fun apply(model: RepresentationModel, factory: RepresentationFactory): Representation {

@@ -12,6 +12,7 @@
 package io.curity.identityserver.plugin.authenticator.access_token.authenticate
 
 import io.curity.identityserver.plugin.authenticator.access_token.descriptor.AccessTokenAuthenticatorConfig
+import io.curity.identityserver.plugin.authenticator.access_token.descriptor.AccessTokenAuthenticatorConstants
 import jakarta.validation.constraints.NotEmpty
 import org.jose4j.jwt.GeneralJwtException
 import org.jose4j.jwt.JwtClaims
@@ -21,14 +22,15 @@ import org.jose4j.jwt.consumer.JwtConsumerBuilder
 import org.slf4j.LoggerFactory
 import se.curity.identityserver.sdk.authentication.AuthenticationResult
 import se.curity.identityserver.sdk.authentication.AuthenticatorRequestHandler
-import se.curity.identityserver.sdk.authorization.AuthorizationErrorMessage
 import se.curity.identityserver.sdk.errors.ErrorCode
+import se.curity.identityserver.sdk.haapi.ProblemContract
 import se.curity.identityserver.sdk.service.ExceptionFactory
 import se.curity.identityserver.sdk.web.Request
 import se.curity.identityserver.sdk.web.Response
 import se.curity.identityserver.sdk.web.Response.ResponseModelScope.NOT_FAILURE
 import se.curity.identityserver.sdk.web.ResponseModel
-import java.util.*
+import se.curity.identityserver.sdk.web.alerts.ErrorMessage
+import java.util.Optional
 
 /**
  * Request model for the access_token authenticator request handler.
@@ -80,7 +82,7 @@ class AccessTokenAuthenticatorRequestHandler(
     ): Optional<AuthenticationResult> {
         response.setResponseModel(
             ResponseModel.templateResponseModel(
-                emptyMap(), "authenticate/start"
+                emptyMap(), AccessTokenAuthenticatorConstants.TEMPLATE_NAME
             ),
             NOT_FAILURE
         )
@@ -94,46 +96,120 @@ class AccessTokenAuthenticatorRequestHandler(
         requestModel as AccessTokenAuthenticatorRequestModel.PostRequestModel
 
         val subject: String = try {
-            val claims: JwtClaims = JwtConsumerBuilder()
+            val jwtBuilder = JwtConsumerBuilder()
                 .setVerificationKey(_config.keyVerification.publicKey)
                 .setRequireNotBefore()
                 .setRequireExpirationTime()
                 .setRequireJwtId()
                 .setRequireIssuedAt()
-                .setExpectedAudience(_config.tokenAudience)
-                .setExpectedIssuer(_config.tokenIssuer)
-                .build()
+                .setExpectedIssuer(_config.requiredIssuer)
+
+            _config.requiredAudience.ifPresentOrElse({ aud ->
+                jwtBuilder.setExpectedAudience(aud)
+            }) {
+                jwtBuilder.setSkipDefaultAudienceValidation()
+            }
+
+            val claims: JwtClaims = jwtBuilder.build()
                 .process(requestModel.accessToken)
                 .jwtClaims
 
-            val purpose: Any? = claims.getClaimValue("purpose")
-            if ("access_token" != purpose) {
-                _logger.debug("Unexpected token purpose: '{}'", purpose)
-                throw _exceptionFactory.authorizationException(
-                    setOf(AuthorizationErrorMessage.of("The provided token does not have purpose 'access_token'"))
-                )
-            }
-
-            claims.subject
+            validatePurpose(response, claims.getClaimValue("purpose"))
+            validateScopes(response, claims.getClaimValue("scope"))
+            validateSubjectIsPresent(response, claims.getClaimValue(_config.subjectClaimName))
         } catch (e: GeneralJwtException) {
             _logger.debug("JWT claims error", e)
             throw _exceptionFactory.badRequestException(ErrorCode.INVALID_INPUT, "JWT contains invalid data")
         } catch (e: InvalidJwtSignatureException) {
             _logger.debug("JWT signature error", e)
-            throw _exceptionFactory.authorizationException(
-                setOf(
-                    AuthorizationErrorMessage.of("Access token signature cannot be recognized")
-                )
-            )
+            failAuthentication(
+                response, "Access token signature cannot be recognized",
+                detailedMessage = e.errorDetails.joinToString { it.errorMessage ?: it.toString() })
         } catch (e: InvalidJwtException) {
             _logger.debug("JWT is invalid", e)
-            throw _exceptionFactory.authorizationException(
-                setOf(
-                    AuthorizationErrorMessage.of("Access token is invalid")
-                )
-            )
+            failAuthentication(
+                response, "Access token is invalid",
+                detailedMessage = e.errorDetails.joinToString { it.errorMessage ?: it.toString() })
         }
 
         return Optional.of(AuthenticationResult(subject))
     }
+
+    private fun validatePurpose(response: Response, purpose: Any?) {
+        if (_config.requiredPurpose.isBlank()) {
+            _logger.trace("Skipping validation of token purpose claim: {}", purpose)
+            return
+        }
+        if (_config.requiredPurpose != purpose) {
+            _logger.debug("Unexpected token purpose: '{}'", purpose)
+            failAuthentication(response, "The provided token does not have purpose 'access_token'")
+        }
+    }
+
+    private fun validateScopes(response: Response, claimValue: Any?) {
+        val requiredScopes = _config.requiredScopes.toSet()
+        if (requiredScopes.isEmpty()) {
+            _logger.trace("Skipping validation of scopes: {}", claimValue)
+            return
+        }
+
+        val actualScopes = claimValue.asScopeSet(response)
+
+        val missingScopes = requiredScopes - actualScopes
+        if (missingScopes.isNotEmpty()) {
+            _logger.debug("Token is missing scopes: {}", missingScopes)
+            failAuthentication(
+                response, "Missing required scope",
+                detailedMessage = "Missing scopes: $missingScopes"
+            )
+        }
+    }
+
+    private fun validateSubjectIsPresent(response: Response, sub: Any?): String {
+        if (sub == null) {
+            _logger.debug("Subject claim [{}] is missing", _config.subjectClaimName)
+            failAuthentication(response, "Subject is missing")
+        }
+        if (sub is String) {
+            _logger.trace("Subject claim [{}] is valid", _config.subjectClaimName)
+            return sub
+        }
+
+        _logger.debug(
+            "Subject claim [{}] is not a String, type is {}",
+            _config.subjectClaimName,
+            sub.javaClass.name
+        )
+
+        failAuthentication(response, "Subject is invalid")
+    }
+
+    private fun Any?.asScopeSet(response: Response): Set<String> {
+        fun throwOnBadType(): Nothing {
+            failAuthentication(response, "Scope claim has unexpected type")
+        }
+        // typically, a single white-separated string is provided
+        if (this == null) {
+            failAuthentication(response, "No scope claim is present")
+        }
+        if (this is String) {
+            return this.split(' ').toSet()
+        }
+        if (this is Collection<*>) {
+            return this.map {
+                it as? String ?: throwOnBadType()
+            }.toSet()
+        }
+        throwOnBadType()
+    }
+
+    private fun failAuthentication(response: Response, message: String, detailedMessage: String? = null): Nothing {
+        response.addErrorMessage(ErrorMessage.withMessage(message))
+        response.setResponseModel(
+            ResponseModel.problemResponseModel(ProblemContract.Types.AuthenticationFailed.TYPE, message),
+            Response.ResponseModelScope.FAILURE
+        )
+        throw _exceptionFactory.badRequestException(ErrorCode.INVALID_INPUT, detailedMessage ?: message)
+    }
+
 }
