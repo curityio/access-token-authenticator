@@ -9,7 +9,12 @@ AccessTokenAuthenticator Authenticator Plug-in
 
 A custom Authenticator plugin for the Curity Identity Server.
 
-This plugin allows users to authenticate using HAAPI by first obtaining an access token via other means.
+.. warning::
+    This plugin cannot be used by users to authenticate directly from a browser.
+    Only authentication via `HAAPI`_ is allowed and the OAuth client initiating authorization MUST be
+    a confidential client with the HAAPI capability.
+
+This plugin allows users to authenticate using `HAAPI`_ by first obtaining an access token via other means.
 
 That allows a form of token exchange where the end user may be prompted to consent to upscoping, for example.
 
@@ -20,14 +25,18 @@ The following configuration settings are available:
 * ``required-scopes`` - required token scopes. Optional.
 * ``required-purpose`` - required token ``purpose``. Default: ``access_token``. If set to a blank string, this will be ignored.
 * ``subject-claim-name`` - the name of the subject claim. Default: ``sub``.
+* ``allowed-oauth-client-ids`` - the allowed OAuth clients. If empty, any confidential HAAPI client will be allowed.
 * ``key-verification/id`` - ID of an existing token signature verification key.
+
+.. note::
+    Even if an OAuth client is allowed by the ``allowed-oauth-client-ids`` setting, it will NOT be allowed to perform authorization
+    unless it is a confidential, authenticated client. This is to ensure that only a limited set of OAuth clients
+    that can be trusted will have the power to obtain sensitive tokens on behalf of end users.
+    This applies only to the OAuth client performing the authorization flow within which this authenticator
+    will be called, not to the OAuth client that obtained the presented access token.
 
 .. image:: docs/images/access_token_config.png
     :alt: Access Token Authenticator Configuration
-
-.. note::
-    This plugin should not be used by users to authenticate using a browser because it is a bad security practice to expose
-    access tokens directly to end users. Use `HAAPI`_ instead.
 
 Building the Plugin
 ~~~~~~~~~~~~~~~~~~~

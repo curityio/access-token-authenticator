@@ -34,11 +34,11 @@ object AccessTokenAuthenticatorConstants {
  * Plugin configuration object.
  */
 interface AccessTokenAuthenticatorConfig : Configuration {
-    @get:Description("The expected token issuer")
+    @get:Description("The expected token issuer.")
     @get:SizeConstraint(min = 2, max = 1024)
     val requiredIssuer: String
 
-    @get:Description("The expected token audience")
+    @get:Description("The expected token audience.")
     val requiredAudience: Optional<@SizeConstraint(min = 2, max = 128) String>
 
     @get:Description("The required scopes, if any.")
