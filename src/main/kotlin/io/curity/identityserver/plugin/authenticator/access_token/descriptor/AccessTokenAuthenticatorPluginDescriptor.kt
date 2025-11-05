@@ -21,6 +21,7 @@ import se.curity.identityserver.sdk.config.annotation.Description
 import se.curity.identityserver.sdk.config.annotation.SizeConstraint
 import se.curity.identityserver.sdk.haapi.RepresentationFunction
 import se.curity.identityserver.sdk.plugin.descriptor.AuthenticatorPluginDescriptor
+import se.curity.identityserver.sdk.service.RequestingOAuthClient
 import se.curity.identityserver.sdk.service.crypto.AsymmetricSignatureVerificationCryptoStore
 import java.util.Optional
 
@@ -56,8 +57,18 @@ interface AccessTokenAuthenticatorConfig : Configuration {
     @get:SizeConstraint(min = 1, max = 64)
     val subjectClaimName: String
 
+    @get:Description("The IDs of the allowed OAuth clients. If empty, any confidential OAuth client will be allowed.")
+    val allowedOauthClientIds: List<@SizeConstraint(min = 1, max = 128) String>
+
     @get:Description("The asymmetric key to use to verify the token signature.")
     val keyVerification: AsymmetricSignatureVerificationCryptoStore
+
+    /**
+     * This authenticator will allow only confidential clients.
+     *
+     * The OAuth client ID must also be allowed by [allowedOauthClientIds].
+     */
+    val requestingOAuthClient: RequestingOAuthClient
 }
 
 /**
