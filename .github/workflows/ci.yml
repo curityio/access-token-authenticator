@@ -32,7 +32,7 @@ jobs:
           client-secret: ${{ secrets.CURITY_CLI_CLIENT_SECRET }}
 
       - name: Run tests
-        run: mvn verify
+        run: mvn verify -s ${{ steps.setup-maven.outputs.settings-file }}
 
   package:
     name: Build Package
@@ -57,5 +57,5 @@ jobs:
           client-secret: ${{ secrets.CURITY_CLI_CLIENT_SECRET }}
 
       - name: Build package
-        run: mvn package
+        run: mvn package -s ${{ steps.setup-maven.outputs.settings-file }}
 
