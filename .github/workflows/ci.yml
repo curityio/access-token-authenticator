@@ -32,30 +32,4 @@ jobs:
           client-secret: ${{ secrets.CURITY_CLI_CLIENT_SECRET }}
 
       - name: Run tests
-        run: mvn verify -s ${{ steps.setup-maven.outputs.settings-file }}
-
-  package:
-    name: Build Package
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-          cache: 'maven'
-
-      # Setup Maven with OAuth token
-      - name: Setup Maven with OAuth
-        uses: curityio/curity-maven-gh-action@v1
-        with:
-          client-secret: ${{ secrets.CURITY_CLI_CLIENT_SECRET }}
-
-      - name: Build package
-        run: mvn package -s ${{ steps.setup-maven.outputs.settings-file }}
-
+        run: mvn verify
