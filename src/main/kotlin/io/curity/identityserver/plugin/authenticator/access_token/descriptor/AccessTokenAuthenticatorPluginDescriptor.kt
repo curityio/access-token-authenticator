@@ -64,9 +64,11 @@ interface AccessTokenAuthenticatorConfig : Configuration {
     val keyVerification: AsymmetricSignatureVerificationCryptoStore
 
     /**
-     * This authenticator will allow only confidential clients.
+     * Service to obtain the requesting OAuth client.
      *
-     * The OAuth client ID must also be allowed by [allowedOauthClientIds].
+     * This authenticator will allow only confidential clients. Consequently, the client must be present.
+     *
+     * Finally, the OAuth client must be in [allowedOauthClientIds] if that List is not empty.
      */
     val requestingOAuthClient: RequestingOAuthClient
 }
