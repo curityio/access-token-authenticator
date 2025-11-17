@@ -20,10 +20,13 @@ import org.jose4j.jwt.consumer.InvalidJwtException
 import org.jose4j.jwt.consumer.InvalidJwtSignatureException
 import org.jose4j.jwt.consumer.JwtConsumerBuilder
 import org.slf4j.LoggerFactory
+import se.curity.identityserver.sdk.Nullable
 import se.curity.identityserver.sdk.authentication.AuthenticationResult
 import se.curity.identityserver.sdk.authentication.AuthenticatorRequestHandler
 import se.curity.identityserver.sdk.errors.ErrorCode
 import se.curity.identityserver.sdk.haapi.ProblemContract
+import se.curity.identityserver.sdk.http.MediaType
+import se.curity.identityserver.sdk.oauth.OAuthClient
 import se.curity.identityserver.sdk.service.ExceptionFactory
 import se.curity.identityserver.sdk.web.Request
 import se.curity.identityserver.sdk.web.Response
@@ -72,9 +75,48 @@ class AccessTokenAuthenticatorRequestHandler(
     override fun preProcess(
         request: Request,
         response: Response,
-    ): AccessTokenAuthenticatorRequestModel =
-        if (request.isGetRequest) AccessTokenAuthenticatorRequestModel.forGet()
+    ): AccessTokenAuthenticatorRequestModel {
+        enforceHaapiFlow(request, response)
+        checkIfOAuthClientIsAllowed(response)
+        return if (request.isGetRequest) AccessTokenAuthenticatorRequestModel.forGet()
         else AccessTokenAuthenticatorRequestModel.forPost(request)
+    }
+
+    private fun enforceHaapiFlow(request: Request, response: Response) {
+        if (request.acceptableMediaTypes != MediaType.HAAPI_JSON.toString()) {
+            failAuthentication(
+                response, "Request must accept only the Media-Type ${MediaType.HAAPI_JSON} to call this endpoint",
+            )
+        }
+    }
+
+    private fun checkIfOAuthClientIsAllowed(response: Response) {
+        val clientNotAllowed = "OAuth client is not allowed"
+
+        val oauthClient: @Nullable OAuthClient = _config.requestingOAuthClient.client
+            ?: failAuthentication(
+                response, clientNotAllowed,
+                detailedMessage = "The authorization flow was not started by a known OAuth Client, cannot proceed."
+            )
+
+        if (oauthClient.isPublic) {
+            failAuthentication(
+                response, clientNotAllowed,
+                detailedMessage = "The authorization flow was started by a public OAuth Client, cannot proceed."
+            )
+        }
+
+        val allowedClients = _config.allowedOauthClientIds
+
+        if (allowedClients.isNotEmpty() && !allowedClients.contains(oauthClient.id)) {
+            val allowedClientsText = allowedClients.joinToString(", ")
+            failAuthentication(
+                response,
+                clientNotAllowed,
+                detailedMessage = "OAuth client is not allowed, allowed clients are: $allowedClientsText"
+            )
+        }
+    }
 
     override fun get(
         requestModel: AccessTokenAuthenticatorRequestModel,

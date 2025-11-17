@@ -21,11 +21,12 @@ import se.curity.identityserver.sdk.config.annotation.Description
 import se.curity.identityserver.sdk.config.annotation.SizeConstraint
 import se.curity.identityserver.sdk.haapi.RepresentationFunction
 import se.curity.identityserver.sdk.plugin.descriptor.AuthenticatorPluginDescriptor
+import se.curity.identityserver.sdk.service.RequestingOAuthClient
 import se.curity.identityserver.sdk.service.crypto.AsymmetricSignatureVerificationCryptoStore
 import java.util.Optional
 
 object AccessTokenAuthenticatorConstants {
-    const val PLUGIN_TYPE = "access_token"
+    const val PLUGIN_TYPE = "access-token"
     const val TEMPLATE_NAME = "authenticate/start"
 }
 
@@ -33,11 +34,11 @@ object AccessTokenAuthenticatorConstants {
  * Plugin configuration object.
  */
 interface AccessTokenAuthenticatorConfig : Configuration {
-    @get:Description("The expected token issuer")
+    @get:Description("The expected token issuer.")
     @get:SizeConstraint(min = 2, max = 1024)
     val requiredIssuer: String
 
-    @get:Description("The expected token audience")
+    @get:Description("The expected token audience.")
     val requiredAudience: Optional<@SizeConstraint(min = 2, max = 128) String>
 
     @get:Description("The required scopes, if any.")
@@ -56,8 +57,20 @@ interface AccessTokenAuthenticatorConfig : Configuration {
     @get:SizeConstraint(min = 1, max = 64)
     val subjectClaimName: String
 
+    @get:Description("The IDs of the allowed OAuth clients. If empty, any confidential OAuth client will be allowed.")
+    val allowedOauthClientIds: List<@SizeConstraint(min = 1, max = 128) String>
+
     @get:Description("The asymmetric key to use to verify the token signature.")
     val keyVerification: AsymmetricSignatureVerificationCryptoStore
+
+    /**
+     * Service to obtain the requesting OAuth client.
+     *
+     * This authenticator will allow only confidential clients. Consequently, the client must be present.
+     *
+     * Finally, the OAuth client must be in [allowedOauthClientIds] if that List is not empty.
+     */
+    val requestingOAuthClient: RequestingOAuthClient
 }
 
 /**
