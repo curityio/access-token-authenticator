@@ -9,12 +9,18 @@ AccessTokenAuthenticator Authenticator Plug-in
 
 A custom Authenticator plugin for the Curity Identity Server.
 
-.. warning::
-    This plugin cannot be used by users to authenticate directly from a browser.
-    Only authentication via `HAAPI`_ is allowed and the OAuth client initiating authorization MUST be
-    a confidential client with the HAAPI capability.
+Warning
+~~~~~~~
 
-This plugin allows users to authenticate using `HAAPI`_ by first obtaining an access token via other means.
+This plugin can only be used to authenticate users via `HAAPI`_, hence the OAuth client initiating authorization MUST be
+a confidential client with the HAAPI capability.
+
+If a user tries to run an authentication flow with this authenticator from a browser, they will see an error.
+
+Overview
+~~~~~~~~
+
+This plugin allows users to authenticate using `HAAPI`_ assuming they have already obtained an access token via other means.
 
 That allows a form of token exchange where the end user may be prompted to consent to upscoping, for example.
 
@@ -29,11 +35,13 @@ The following configuration settings are available:
 * ``key-verification/id`` - ID of an existing token signature verification key.
 
 .. note::
-    Even if an OAuth client is allowed by the ``allowed-oauth-client-ids`` setting, it will NOT be allowed to perform authorization
-    unless it is a confidential, authenticated client. This is to ensure that only a limited set of OAuth clients
-    that can be trusted will have the power to obtain sensitive tokens on behalf of end users.
-    This applies only to the OAuth client performing the authorization flow within which this authenticator
-    will be called, not to the OAuth client that obtained the presented access token.
+    OAuth clients added to the ``allowed-oauth-client-ids`` list must be confidential clients.
+    Public clients will be rejected when trying to use this authenticator, even if they are on the list.
+    This is to ensure that only a limited set of OAuth clients, ones that the authorization server trusts,
+    will have the power to obtain sensitive tokens on behalf of end users.
+
+    This limitation applies only to the client that runs an authentication flow with this authenticator.
+    The access token used as the input to this authenticator can be obtained by any OAuth client, even a public one.
 
 .. image:: docs/images/access_token_config.png
     :alt: Access Token Authenticator Configuration
