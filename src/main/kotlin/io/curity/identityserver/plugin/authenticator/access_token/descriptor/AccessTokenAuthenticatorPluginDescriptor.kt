@@ -26,7 +26,7 @@ import se.curity.identityserver.sdk.service.crypto.AsymmetricSignatureVerificati
 import java.util.Optional
 
 object AccessTokenAuthenticatorConstants {
-    const val PLUGIN_TYPE = "access_token"
+    const val PLUGIN_TYPE = "access-token"
     const val TEMPLATE_NAME = "authenticate/start"
 }
 
