@@ -6,7 +6,7 @@
 
     <groupId>io.curity.identityserver.plugin</groupId>
     <artifactId>identityserver.plugins.authenticators.access_token</artifactId>
-    <version>1.0.2</version>
+    <version>1.0.3</version>
     <packaging>jar</packaging>
 
     <name>Curity AccessToken Authenticator</name>
@@ -99,4 +99,11 @@
             <version>${jose4j.version}</version>
         </dependency>
     </dependencies>
+    <distributionManagement>
+        <repository>
+            <id>customer-release-repo</id>
+            <name>Customer Release Repository</name>
+            <url>https://hub.curityio.net/repository/curity-release-repo/</url>
+        </repository>
+    </distributionManagement>
 </project>
